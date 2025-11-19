@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utility App | Analog Mode</title>
+    <!-- PWA: Manifest file ko link karna -->
+    <link rel="manifest" href="manifest.json"> 
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for dark theme and aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937; /* Dark Gray background */
+            color: #f3f4f6;
+        }
+        .app-container {
+            max-width: 450px;
+            margin: 2rem auto;
+            background: #374151; /* Slightly lighter gray for the container */
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        .tab-btn {
+            font-size: 1.125rem;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .active-tab {
+            color: #3b82f6 !important;
+            border-bottom: 3px solid #3b82f6 !important;
+        }
+        
+        /* Calculator specific styles */
+        .calc-display {
+            min-height: 8rem;
+            word-wrap: break-word;
+        }
+        .btn {
+            transition: all 0.15s ease-in-out;
+            border-radius: 0.75rem;
+            background-color: #4b5563; 
+            color: #f3f4f6;
+        }
+        .btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            background-color: #6b7280;
+        }
+        
+        /* Operator buttons (differentiation) */
+        .bg-operator { background-color: #f97316; } /* Orange */
+        .hover-operator:hover { background-color: #ea580c; }
+        .bg-action { background-color: #4f46e5; } /* Indigo */
+        .hover-action:hover { background-color: #4338ca; }
+        
+        /* Input fields for Timer */
+        .timer-input input {
+            text-align: center;
+            border: none;
+            background-color: #4b5563;
+            color: #d1d5db;
+            padding: 0.5rem;
+            width: 100%;
+            font-size: 1.25rem;
+            border-radius: 0.5rem;
+        }
+
+        /* Canvas Styles for responsiveness */
+        .analog-canvas {
+            display: block;
+            width: 100%;
+            max-width: 300px; /* Limit max size */
+            height: auto;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Header/Tab Navigation -->
+    <header class="flex justify-around bg-gray-700 border-b border-gray-600">
+        <button id="tab-calculator" onclick="showTab('calculator')" class="tab-btn active-tab flex-1 font-semibold text-blue-400">Calculator</button>
+        <button id="tab-stopwatch" onclick="showTab('stopwatch')" class="tab-btn flex-1 font-semibold text-gray-400 hover:text-blue-400">Stopwatch</button>
+        <button id="tab-timer" onclick="showTab('timer')" class="tab-btn flex-1 font-semibold text-gray-400 hover:text-blue-400">Timer</button>
+    </header>
+
+    <main class="p-6">
+        <!-- 1. Calculator Tab -->
+        <div id="calculator" class="tab-content">
+            <h2 class="text-2xl font-bold mb-4 text-gray-200 text-center">Digital Calculator</h2>
+            <!-- Display -->
+            <div id="calc-display" class="calc-display bg-gray-900 text-white text-right p-4 mb-5 rounded-xl shadow-xl flex flex-col justify-end">
+                <div id="calc-operation" class="text-sm text-gray-400 min-h-6"></div>
+                <div id="calc-current" class="text-6xl font-extralight truncate">0</div>
+            </div>
+
+            <!-- Buttons Grid (Same as before) -->
+            <div class="grid grid-cols-4 gap-3">
+                <button onclick="clearAll()" class="btn bg-red-600 hover:bg-red-700 text-2xl p-4 shadow-lg col-span-2">AC</button>
+                <button onclick="deleteLast()" class="btn hover:bg-gray-500 text-2xl p-4 shadow-lg">DEL</button>
+                <button onclick="appendOperator('/')" class="btn bg-operator text-white text-2xl p-4 shadow-lg hover-operator">÷</button>
+                
+                <button onclick="appendNumber('7')" class="btn text-2xl p-4 shadow-lg">7</button>
+                <button onclick="appendNumber('8')" class="btn text-2xl p-4 shadow-lg">8</button>
+                <button onclick="appendNumber('9')" class="btn text-2xl p-4 shadow-lg">9</button>
+                <button onclick="appendOperator('*')" class="btn bg-operator text-white text-2xl p-4 shadow-lg hover-operator">×</button>
+                
+                <button onclick="appendNumber('4')" class="btn text-2xl p-4 shadow-lg">4</button>
+                <button onclick="appendNumber('5')" class="btn text-2xl p-4 shadow-lg">5</button>
+                <button onclick="appendNumber('6')" class="btn text-2xl p-4 shadow-lg">6</button>
+                <button onclick="appendOperator('-')" class="btn bg-operator text-white text-2xl p-4 shadow-lg hover-operator">−</button>
+                
+                <button onclick="appendNumber('1')" class="btn text-2xl p-4 shadow-lg">1</button>
+                <button onclick="appendNumber('2')" class="btn text-2xl p-4 shadow-lg">2</button>
+                <button onclick="appendNumber('3')" class="btn text-2xl p-4 shadow-lg">3</button>
+                <button onclick="appendOperator('+')" class="btn bg-operator text-white text-2xl p-4 shadow-lg hover-operator">+</button>
+                
+                <button onclick="appendNumber('0')" class="btn text-2xl p-4 shadow-lg col-span-2">0</button>
+                <button onclick="appendDecimal()" class="btn text-2xl p-4 shadow-lg">.</button>
+                <button onclick="calculate()" class="btn bg-blue-600 text-white text-2xl p-4 shadow-lg hover:bg-blue-700">=</button>
+            </div>
+        </div>
+
+        <!-- 2. Stopwatch Tab (Analog Display) -->
+        <div id="stopwatch" class="tab-content hidden text-center">
+            <h2 class="text-2xl font-bold mb-4 text-gray-200">Stopwatch (Analog)</h2>
+            
+            <div class="mb-4">
+                <!-- Canvas for Analog Stopwatch -->
+                <canvas id="stopwatch-canvas" class="analog-canvas" width="300" height="300"></canvas>
+            </div>
+            
+            <!-- Digital readout remains for precision (Hidden by default, shown when running) -->
+            <div id="stopwatch-digital-display" class="text-xl font-mono text-gray-400 mb-6 invisible">
+                00:00:00.00
+            </div>
+            
+            <div class="flex justify-center space-x-4 mb-8">
+                <button id="stopwatch-start" onclick="startStopwatch()" class="btn bg-green-500 text-white text-xl p-3 w-32 shadow-lg hover:bg-green-600">Start</button>
+                <button id="stopwatch-lap" onclick="lapStopwatch()" class="btn bg-gray-500 text-white text-xl p-3 w-32 shadow-lg hover:bg-gray-600" disabled>Lap</button>
+                <button id="stopwatch-stop" onclick="stopStopwatch()" class="btn bg-red-600 text-white text-xl p-3 w-32 shadow-lg hover:bg-red-700 hidden">Stop</button>
+                <button id="stopwatch-reset" onclick="resetStopwatch()" class="btn bg-action text-white text-xl p-3 w-32 shadow-lg hover-action">Reset</button>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="text-xl font-semibold mb-3 border-b border-gray-600 pb-2 text-gray-300">Lap List</h3>
+                <ul id="lap-list" class="space-y-2 text-left max-h-60 overflow-y-auto p-2 border border-gray-600 rounded-xl bg-gray-700">
+                    <li class="text-gray-400 text-center py-2">No laps recorded.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 3. Timer Tab (Analog Progress) -->
+        <div id="timer" class="tab-content hidden text-center">
+            <h2 class="text-2xl font-bold mb-4 text-gray-200">Timer (Analog)</h2>
+            
+            <!-- Time Input Fields (Visible when setting time) -->
+            <div class="flex justify-center space-x-3 mb-6 timer-input">
+                <div>
+                    <input type="number" id="timer-hours" min="0" max="99" value="0" placeholder="00" class="text-6xl font-extralight" oninput="validateTimerInput(this)">
+                    <p class="text-sm mt-1 text-gray-400">Hours</p>
+                </div>
+                <div class="text-6xl font-extralight text-blue-400">:</div>
+                <div>
+                    <input type="number" id="timer-minutes" min="0" max="59" value="0" placeholder="00" class="text-6xl font-extralight" oninput="validateTimerInput(this)">
+                    <p class="text-sm mt-1 text-gray-400">Minutes</p>
+                </div>
+                <div class="text-6xl font-extralight text-blue-400">:</div>
+                <div>
+                    <input type="number" id="timer-seconds" min="0" max="59" value="0" placeholder="00" class="text-6xl font-extralight" oninput="validateTimerInput(this)">
+                    <p class="text-sm mt-1 text-gray-400">Seconds</p>
+                </div>
+            </div>
+
+            <!-- Countdown Display (Analog Canvas - initially shows digital time 00:00:00) -->
+            <div id="timer-countdown-display" class="hidden">
+                 <canvas id="timer-canvas" class="analog-canvas" width="300" height="300"></canvas>
+            </div>
+
+            <!-- Timer Controls -->
+            <div class="flex justify-center space-x-4 mt-8">
+                <button id="timer-start" onclick="startTimer()" class="btn bg-blue-600 text-white text-xl p-3 w-32 shadow-lg hover:bg-blue-700">Start</button>
+                <button id="timer-pause" onclick="pauseTimer()" class="btn bg-yellow-500 text-white text-xl p-3 w-32 shadow-lg hover:bg-yellow-600 hidden">Pause</button>
+                <button id="timer-reset" onclick="resetTimer()" class="btn bg-action text-white text-xl p-3 w-32 shadow-lg hover-action" disabled>Reset</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Custom Modal for Alerts -->
+<div id="custom-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50">
+    <div class="app-container p-6 text-center shadow-2xl max-w-sm w-full bg-gray-700 border border-gray-600">
+        <h3 id="modal-title" class="text-xl font-bold mb-3 text-red-400">Error</h3>
+        <p id="modal-message" class="mb-4 text-gray-200"></p>
+        <button onclick="closeModal()" class="btn bg-blue-600 text-white p-2 w-24 rounded-lg hover:bg-blue-700">OK</button>
+    </div>
+</div>
+
+
+<script>
+    // --- Service Worker Registration ---
+    // Service Worker ko register karna PWA functionality ke liye
+    // (Registering the Service Worker for PWA functionality)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(registration => {
+            console.log('Service Worker registered successfully with scope:', registration.scope);
+          })
+          .catch(error => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    // --- Utility Functions ---
+
+    function showModal(title, message, isError = true) {
+        const modalTitle = document.getElementById('modal-title');
+        modalTitle.textContent = title;
+        modalTitle.className = isError ? 'text-xl font-bold mb-3 text-red-400' : 'text-xl font-bold mb-3 text-green-400';
+        
+        document.getElementById('modal-message').textContent = message;
+        document.getElementById('custom-modal').classList.remove('hidden');
+        document.getElementById('custom-modal').classList.add('flex');
+    }
+
+    function closeModal() {
+        document.getElementById('custom-modal').classList.add('hidden');
+        document.getElementById('custom-modal').classList.remove('flex');
+    }
+
+    /**
+     * Formats milliseconds into HH:MM:SS.ms string
+     */
+    function formatTime(ms) {
+        const totalSeconds = Math.floor(ms / 1000);
+        const milliseconds = Math.floor((ms % 1000) / 10);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const pad = (num, length = 2) => String(num).padStart(length, '0');
+
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
+    }
+
+    /**
+     * Formats total seconds into HH:MM:SS string (for Timer)
+     */
+    function formatTimeHms(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const pad = (num) => String(num).padStart(2, '0');
+
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    // --- Tab Switching Logic ---
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        document.getElementById(tabId).classList.remove('hidden');
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active-tab', 'text-blue-400', 'border-b-3', 'border-blue-400');
+            btn.classList.add('text-gray-400', 'hover:text-blue-400');
+        });
+
+        const activeTab = document.getElementById(`tab-${tabId}`);
+        activeTab.classList.add('active-tab', 'text-blue-400');
+        activeTab.classList.remove('text-gray-400', 'hover:text-blue-400');
+        
+        // Ensure initial draw for analog components
+        if (tabId === 'stopwatch') {
+            drawStopwatch();
+        } else if (tabId === 'timer') {
+            drawTimer(true); // Draw initial state for timer
+        }
+    }
+
+    // Initialize to Calculator tab
+    // window.onload moved the registration script above
+    
+    // --- 1. Calculator Logic (Unchanged) ---
+    let currentInput = '0';
+    let operation = '';
+    let waitingForSecondOperand = false;
+
+    const displayCurrent = document.getElementById('calc-current');
+    const displayOperation = document.getElementById('calc-operation');
+
+    function updateDisplay() {
+        displayCurrent.textContent = currentInput;
+        displayOperation.textContent = operation;
+    }
+
+    function appendNumber(number) {
+        if (currentInput === '0' || waitingForSecondOperand) {
+            currentInput = number;
+            waitingForSecondOperand = false;
+        } else {
+            currentInput += number;
+        }
+        updateDisplay();
+    }
+
+    function appendDecimal() {
+        if (waitingForSecondOperand) {
+            currentInput = '0.';
+            waitingForSecondOperand = false;
+            updateDisplay();
+            return;
+        }
+        if (!currentInput.includes('.')) {
+            currentInput += '.';
+        }
+        updateDisplay();
+    }
+
+    function appendOperator(op) {
+        if (operation && !waitingForSecondOperand) {
+            calculate();
+        }
+        operation = currentInput + ' ' + op;
+        waitingForSecondOperand = true;
+        updateDisplay();
+    }
+
+    function clearAll() {
+        currentInput = '0';
+        operation = '';
+        waitingForSecondOperand = false;
+        updateDisplay();
+    }
+
+    function deleteLast() {
+        if (waitingForSecondOperand) return;
+        currentInput = currentInput.slice(0, -1);
+        if (currentInput === '') {
+            currentInput = '0';
+        }
+        updateDisplay();
+    }
+
+    function calculate() {
+        if (!operation || waitingForSecondOperand) return;
+
+        const [firstOperandStr, operator] = operation.split(' ');
+        const secondOperandStr = currentInput;
+
+        const firstOperand = parseFloat(firstOperandStr);
+        const secondOperand = parseFloat(secondOperandStr);
+        let result = 0;
+
+        try {
+            switch (operator) {
+                case '+': result = firstOperand + secondOperand; break;
+                case '-': result = firstOperand - secondOperand; break;
+                case '*': result = firstOperand * secondOperand; break;
+                case '/':
+                    if (secondOperand === 0) {
+                        showModal("Error", "Cannot divide by zero!");
+                        clearAll();
+                        return;
+                    }
+                    result = firstOperand / secondOperand;
+                    break;
+                default: return;
+            }
+        } catch (error) {
+            showModal("Error", "Calculation failed. Please try again.");
+            clearAll();
+            return;
+        }
+
+        operation = `${operation} ${secondOperandStr} =`;
+        currentInput = parseFloat(result.toFixed(8)).toString(); 
+        waitingForSecondOperand = true;
+        updateDisplay();
+    }
+
+
+    // --- 2. Stopwatch Logic (Analog) ---
+    let stopwatchInterval;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let isStopwatchRunning = false;
+    let lapCounter = 0;
+
+    const stopwatchCanvas = document.getElementById('stopwatch-canvas');
+    const swCtx = stopwatchCanvas.getContext('2d');
+    const lapList = document.getElementById('lap-list');
+    const stopwatchDigitalDisplay = document.getElementById('stopwatch-digital-display');
+    
+    // Set fixed dimensions for canvas drawing
+    stopwatchCanvas.width = 300;
+    stopwatchCanvas.height = 300;
+
+    function drawHand(ctx, pos, length, width, color) {
+        ctx.beginPath();
+        ctx.lineWidth = width;
+        ctx.lineCap = "round";
+        ctx.moveTo(0, 0);
+        ctx.rotate(pos);
+        ctx.lineTo(0, -length);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.rotate(-pos);
+    }
+
+    function drawStopwatch() {
+        const radius = stopwatchCanvas.height / 2;
+        const centerX = radius;
+        const centerY = radius;
+        
+        swCtx.clearRect(0, 0, stopwatchCanvas.width, stopwatchCanvas.height);
+        
+        // Move to center
+        swCtx.translate(centerX, centerY);
+
+        // 1. Draw Dial Face
+        swCtx.beginPath();
+        swCtx.arc(0, 0, radius * 0.95, 0, 2 * Math.PI);
+        swCtx.fillStyle = '#111827'; // Dark background
+        swCtx.fill();
+        swCtx.strokeStyle = '#6b7280'; // Gray border
+        swCtx.lineWidth = 4;
+        swCtx.stroke();
+
+        // 2. Draw Marks (60 seconds/minutes marks)
+        for (let i = 0; i < 60; i++) {
+            swCtx.save();
+            // Rotate to correct mark position
+            swCtx.rotate(i * 2 * Math.PI / 60);
+            swCtx.strokeStyle = (i % 5 === 0) ? '#f97316' : '#4b5563';
+            swCtx.lineWidth = (i % 5 === 0) ? 3 : 1;
+            swCtx.beginPath();
+            swCtx.moveTo(0, -radius * 0.9);
+            swCtx.lineTo(0, -radius * (i % 5 === 0 ? 0.8 : 0.85));
+            swCtx.stroke();
+            swCtx.restore();
+        }
+        
+        // Time calculations (ms)
+        const ms = elapsedTime;
+        
+        // Seconds Hand (Full 60-second rotation based on ms)
+        // Milliseconds contribute to a smoother second hand movement
+        const seconds_ms = ms / 1000;
+        const secAngle = (seconds_ms / 60) * (2 * Math.PI); 
+        drawHand(swCtx, secAngle, radius * 0.85, 3, '#ef4444'); // Red
+
+        // Minute Hand (Full 60-minute rotation based on seconds/minutes)
+        const minutes_sec = seconds_ms / 60;
+        const minAngle = (minutes_sec / 60) * (2 * Math.PI);
+        drawHand(swCtx, minAngle, radius * 0.6, 5, '#3b82f6'); // Blue
+
+        // Hour Hand (This stopwatch hand completes a full rotation every 12 minutes for elapsed time clarity)
+        // 720 seconds (12 minutes) for a full sweep of the hour hand (non-standard but useful for stopwatch)
+        const hours_ms = ms / (12 * 60 * 1000); // 12 minutes = 720,000 ms
+        const hourAngle = (hours_ms) * (2 * Math.PI);
+        drawHand(swCtx, hourAngle, radius * 0.4, 7, '#9ca3af'); // Gray
+
+        // Center dot
+        swCtx.beginPath();
+        swCtx.arc(0, 0, 8, 0, 2 * Math.PI);
+        swCtx.fillStyle = '#f97316';
+        swCtx.fill();
+
+        // Restore context (move back to original position)
+        swCtx.translate(-centerX, -centerY);
+        
+        // Update digital display
+        stopwatchDigitalDisplay.textContent = formatTime(elapsedTime);
+        if (isStopwatchRunning) {
+            requestAnimationFrame(drawStopwatch);
+        }
+    }
+
+    function startStopwatch() {
+        if (isStopwatchRunning) return;
+
+        isStopwatchRunning = true;
+        startTime = Date.now() - elapsedTime;
+
+        document.getElementById('stopwatch-start').classList.add('hidden');
+        document.getElementById('stopwatch-stop').classList.remove('hidden');
+        document.getElementById('stopwatch-lap').disabled = false;
+        stopwatchDigitalDisplay.classList.remove('invisible');
+
+        // Use requestAnimationFrame for smooth drawing
+        drawStopwatch(); 
+        
+        // Only update elapsed time in background, drawStopwatch handles visual update
+        stopwatchInterval = setInterval(() => {
+            elapsedTime = Date.now() - startTime;
+        }, 10);
+    }
+
+    function stopStopwatch() {
+        if (!isStopwatchRunning) return;
+
+        isStopwatchRunning = false;
+        clearInterval(stopwatchInterval);
+
+        document.getElementById('stopwatch-start').classList.remove('hidden');
+        document.getElementById('stopwatch-stop').classList.add('hidden');
+    }
+
+    function resetStopwatch() {
+        stopStopwatch();
+        elapsedTime = 0;
+        lapCounter = 0;
+        
+        stopwatchDigitalDisplay.textContent = formatTime(elapsedTime);
+        stopwatchDigitalDisplay.classList.add('invisible');
+        
+        document.getElementById('stopwatch-lap').disabled = true;
+        lapList.innerHTML = '<li class="text-gray-400 text-center py-2">No laps recorded.</li>';
+        
+        document.getElementById('stopwatch-start').classList.remove('hidden');
+        document.getElementById('stopwatch-stop').classList.add('hidden');
+        
+        drawStopwatch(); // Redraw static 00:00:00 state
+    }
+
+    function lapStopwatch() {
+        if (!isStopwatchRunning) return;
+
+        lapCounter++;
+        const timeStr = stopwatchDigitalDisplay.textContent;
+
+        const lapItem = document.createElement('li');
+        lapItem.className = 'flex justify-between items-center p-2 rounded-lg bg-gray-600 shadow-md border-l-4 border-blue-500';
+        lapItem.innerHTML = `
+            <span class="font-bold text-blue-300">Lap ${lapCounter}</span>
+            <span class="text-lg font-mono text-gray-200">${timeStr}</span>
+        `;
+        
+        if (lapList.firstElementChild && lapList.firstElementChild.textContent.includes('No laps recorded.')) {
+            lapList.innerHTML = '';
+        }
+
+        lapList.prepend(lapItem);
+    }
+
+
+    // --- 3. Timer Logic (Analog Progress) ---
+    let timerInterval;
+    let initialTotalSeconds = 0; // Stored initial time for reset/calculation
+    let remainingSeconds = 0;
+    let isTimerRunning = false;
+    let isTimerSet = false;
+
+    const timerHoursInput = document.getElementById('timer-hours');
+    const timerMinutesInput = document.getElementById('timer-minutes');
+    const timerSecondsInput = document.getElementById('timer-seconds');
+    const timerCanvas = document.getElementById('timer-canvas');
+    const tCtx = timerCanvas.getContext('2d');
+
+    // Set fixed dimensions for canvas drawing
+    timerCanvas.width = 300;
+    timerCanvas.height = 300;
+
+    function drawTimer(isInitialDraw = false) {
+        const radius = timerCanvas.height / 2;
+        const centerX = radius;
+        const centerY = radius;
+        const progressRatio = isTimerSet ? (initialTotalSeconds - remainingSeconds) / initialTotalSeconds : 0;
+        const remainingTimeStr = formatTimeHms(remainingSeconds);
+
+        tCtx.clearRect(0, 0, timerCanvas.width, timerCanvas.height);
+        tCtx.translate(centerX, centerY);
+
+        // 1. Draw Static Circle (The track)
+        tCtx.beginPath();
+        tCtx.arc(0, 0, radius * 0.85, 0, 2 * Math.PI);
+        tCtx.strokeStyle = '#4b5563'; // Gray track
+        tCtx.lineWidth = 20;
+        tCtx.stroke();
+
+        // 2. Draw Progress Arc
+        if (isTimerSet && progressRatio <= 1) {
+            // Timer starts from 12 o'clock and moves clockwise
+            const startAngle = -Math.PI / 2; 
+            const endAngle = startAngle + (2 * Math.PI * progressRatio);
+            
+            tCtx.beginPath();
+            tCtx.arc(0, 0, radius * 0.85, startAngle, endAngle);
+            tCtx.strokeStyle = '#3b82f6'; // Blue progress
+            tCtx.lineWidth = 20;
+            tCtx.lineCap = 'round';
+            tCtx.stroke();
+        }
+
+        // 3. Draw Digital Readout
+        tCtx.fillStyle = isTimerRunning && remainingSeconds <= 10 ? '#ef4444' : '#d1d5db';
+        tCtx.font = "bold 40px Inter";
+        tCtx.textAlign = "center";
+        tCtx.textBaseline = "middle";
+        tCtx.fillText(remainingTimeStr, 0, 0);
+
+        // 4. Draw Label
+        tCtx.fillStyle = '#9ca3af';
+        tCtx.font = "16px Inter";
+        tCtx.fillText("Remaining", 0, 40);
+
+        tCtx.translate(-centerX, -centerY);
+
+        if (isTimerRunning) {
+            requestAnimationFrame(drawTimer);
+        }
+    }
+
+
+    function validateTimerInput(inputElement) {
+        let value = parseInt(inputElement.value);
+        const min = parseInt(inputElement.min);
+        const max = parseInt(inputElement.max);
+
+        if (isNaN(value) || value < min) {
+            value = min;
+        } else if (value > max) {
+            value = max;
+        }
+
+        inputElement.value = value;
+    }
+
+    function startTimer() {
+        if (isTimerRunning) return;
+
+        if (!isTimerSet) {
+            const h = parseInt(timerHoursInput.value) || 0;
+            const m = parseInt(timerMinutesInput.value) || 0;
+            const s = parseInt(timerSecondsInput.value) || 0;
+            
+            initialTotalSeconds = (h * 3600) + (m * 60) + s;
+            remainingSeconds = initialTotalSeconds;
+
+            if (initialTotalSeconds <= 0) {
+                showModal("Warning", "Please set a time (Hours, Minutes, or Seconds) to start.", false);
+                return;
+            }
+            isTimerSet = true;
+        }
+        
+        isTimerRunning = true;
+        
+        // Toggle UI visibility
+        document.getElementById('timer-countdown-display').classList.remove('hidden');
+        document.querySelectorAll('.timer-input').forEach(el => el.classList.add('hidden'));
+        document.getElementById('timer-start').classList.add('hidden');
+        document.getElementById('timer-pause').classList.remove('hidden');
+        document.getElementById('timer-reset').disabled = false;
+        
+        // Disable inputs while running
+        timerHoursInput.disabled = timerMinutesInput.disabled = timerSecondsInput.disabled = true;
+
+        // Start drawing immediately
+        drawTimer(); 
+
+        timerInterval = setInterval(() => {
+            remainingSeconds--;
+
+            if (remainingSeconds < 0) {
+                clearInterval(timerInterval);
+                timerFinished();
+                return;
+            }
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        if (!isTimerRunning) return;
+
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        
+        document.getElementById('timer-start').classList.remove('hidden');
+        document.getElementById('timer-pause').classList.add('hidden');
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        isTimerSet = false;
+        initialTotalSeconds = 0;
+        remainingSeconds = 0;
+        
+        // Reset inputs
+        timerHoursInput.value = 0;
+        timerMinutesInput.value = 0;
+        timerSecondsInput.value = 0;
+        timerHoursInput.disabled = timerMinutesInput.disabled = timerSecondsInput.disabled = false;
+
+        // Toggle UI visibility
+        document.getElementById('timer-countdown-display').classList.add('hidden');
+        document.querySelectorAll('.timer-input').forEach(el => el.classList.remove('hidden'));
+        document.getElementById('timer-start').classList.remove('hidden');
+        document.getElementById('timer-pause').classList.add('hidden');
+        document.getElementById('timer-reset').disabled = true;
+
+        drawTimer(true); // Redraw static 00:00:00 state
+    }
+    
+    function timerFinished() {
+        showModal("Time's Up!", "The timer has finished counting down.", false);
+        resetTimer(); 
+    }
+
+    showTab('calculator'); // Call initial tab switch after all functions are defined
+</script>
+
+</body>
+</html>
+
